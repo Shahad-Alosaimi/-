@@ -1,26 +1,13 @@
--- ============================================
--- مشروع: موقع المفقودات والموجودات
--- الملف: schema.sql
--- المسؤولة: العضوة الأولى
--- ============================================
-
 CREATE DATABASE IF NOT EXISTS lost_found_db
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
-
 USE lost_found_db;
-
--- ============================================
--- جدول 1: التصنيفات (Categories)
--- ============================================
 CREATE TABLE categories (
     id        INT AUTO_INCREMENT PRIMARY KEY,
     name_ar   VARCHAR(100) NOT NULL COMMENT 'اسم التصنيف بالعربي',
     name_en   VARCHAR(100) NOT NULL COMMENT 'اسم التصنيف بالإنجليزي',
     icon      VARCHAR(50)  DEFAULT 'fa-box' COMMENT 'أيقونة FontAwesome'
 );
-
--- بيانات التصنيفات الافتراضية
 INSERT INTO categories (name_ar, name_en, icon) VALUES
 ('إلكترونيات',  'Electronics',  'fa-mobile-alt'),
 ('وثائق ومستندات', 'Documents', 'fa-id-card'),
@@ -30,10 +17,6 @@ INSERT INTO categories (name_ar, name_en, icon) VALUES
 ('ملابس',        'Clothing',    'fa-tshirt'),
 ('حيوانات أليفة', 'Pets',       'fa-paw'),
 ('أخرى',         'Other',       'fa-box');
-
--- ============================================
--- جدول 2: المستخدمون (Users)
--- ============================================
 CREATE TABLE users (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     full_name     VARCHAR(100)        NOT NULL COMMENT 'الاسم الكامل',
@@ -46,10 +29,6 @@ CREATE TABLE users (
     created_at    DATETIME            DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-
--- ============================================
--- جدول 3: البلاغات (Items)
--- ============================================
 CREATE TABLE items (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     user_id       INT          NOT NULL COMMENT 'صاحب البلاغ',
@@ -72,17 +51,11 @@ CREATE TABLE items (
     FOREIGN KEY (user_id)     REFERENCES users(id)      ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
 );
-
--- فهرسة لتسريع البحث
 CREATE INDEX idx_items_type     ON items(type);
 CREATE INDEX idx_items_status   ON items(status);
 CREATE INDEX idx_items_city     ON items(city);
 CREATE INDEX idx_items_category ON items(category_id);
 CREATE INDEX idx_items_date     ON items(incident_date);
-
--- ============================================
--- جدول 4: الرسائل الداخلية (Messages)
--- ============================================
 CREATE TABLE messages (
     id          INT AUTO_INCREMENT PRIMARY KEY,
     item_id     INT  NOT NULL COMMENT 'البلاغ المرتبط بالرسالة',
@@ -98,10 +71,6 @@ CREATE TABLE messages (
 );
 
 CREATE INDEX idx_messages_receiver ON messages(receiver_id, is_read);
-
--- ============================================
--- جدول 5: الإشعارات (Notifications)
--- ============================================
 CREATE TABLE notifications (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     user_id    INT          NOT NULL COMMENT 'المستخدم الذي يستقبل الإشعار',
@@ -113,22 +82,3 @@ CREATE TABLE notifications (
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
--- ============================================
--- ملاحظات للعضوات الأخريات:
--- ============================================
--- عضوة 3 (تسجيل الدخول): استخدمي جدول users
---   - التسجيل: INSERT INTO users
---   - الدخول:  SELECT * FROM users WHERE email=? AND is_active=1
---
--- عضوة 4 (إضافة البلاغ): استخدمي جدول items + categories
---   - جلب التصنيفات: SELECT * FROM categories
---   - حفظ بلاغ:      INSERT INTO items
---
--- عضوة 5 و 6 (عرض البلاغات): استخدمي جدول items
---   - SELECT items.*, users.full_name, categories.name_ar
---     FROM items JOIN users ON ... JOIN categories ON ...
---     WHERE items.status='active'
---
--- عضوة 8 (الرسائل): استخدمي جدول messages + notifications
--- ============================================
