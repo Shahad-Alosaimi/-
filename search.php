@@ -1,84 +1,160 @@
 <?php
-require_once 'config.php';
-$pageTitle = 'البحث';
-
-$q          = isset($_GET['q'])          ? clean($conn, $_GET['q'])   : '';
-$type       = isset($_GET['type'])       ? clean($conn, $_GET['type']) : '';
-$category   = isset($_GET['category'])   ? (int)$_GET['category']     : 0;
-$city       = isset($_GET['city'])       ? clean($conn, $_GET['city']) : '';
-
-$where = ["items.status='active'"];
-if ($q)        $where[] = "(items.title LIKE '%$q%' OR items.description LIKE '%$q%')";
-if ($type === 'lost' || $type === 'found') $where[] = "items.type='$type'";
-if ($category) $where[] = "items.category_id=$category";
-if ($city)     $where[] = "items.city LIKE '%$city%'";
-
-$sql = "SELECT items.*, users.full_name, categories.name_ar, categories.icon
-        FROM items
-        JOIN users ON items.user_id = users.id
-        JOIN categories ON items.category_id = categories.id
-        WHERE " . implode(' AND ', $where) . "
-        ORDER BY items.created_at DESC";
-
-$result = $conn->query($sql);
-$items  = $result->fetch_all(MYSQLI_ASSOC);
-$categories = $conn->query("SELECT * FROM categories")->fetch_all(MYSQLI_ASSOC);
-
-include 'includes/header.php';
+include 'config.php';
+include 'header.php';
+ 
+$keyword  = '';
+$category = '';
+$city     = '';
+$type     = '';
+ 
+if (isset($_GET['keyword']))  $keyword  = clean($conn, $_GET['keyword']);
+if (isset($_GET['category'])) $category = clean($conn, $_GET['category']);
+if (isset($_GET['city']))     $city     = clean($conn, $_GET['city']);
+if (isset($_GET['type']))     $type     = clean($conn, $_GET['type']);
+ 
+$sql = "SELECT items.*, categories.name_ar AS category_name 
+        FROM items 
+        LEFT JOIN categories ON items.category_id = categories.id 
+        WHERE items.status = 'active'";
+ 
+if ($keyword != '') {
+    $sql = $sql . " AND (items.title LIKE '%" . $keyword . "%' OR items.description LIKE '%" . $keyword . "%')";
+}
+ 
+if ($category != '') {
+    $sql = $sql . " AND items.category_id = " . $category;
+}
+ 
+if ($city != '') {
+    $sql = $sql . " AND items.city = '" . $city . "'";
+}
+ 
+if ($type != '') {
+    $sql = $sql . " AND items.type = '" . $type . "'";
+}
+ 
+$sql = $sql . " ORDER BY items.id DESC";
+ 
+$result = mysqli_query($conn, $sql);
+$num    = mysqli_num_rows($result);
 ?>
-
-<div class="container">
-    <div class="section-title">البحث في البلاغات</div>
-
-    <form class="search-bar" method="GET" style="flex-wrap:wrap; gap:10px;">
-        <input type="text" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="ابحثي...">
-        <select name="type">
-            <option value="">الكل</option>
-            <option value="lost"  <?= $type==='lost'  ? 'selected':'' ?>>🔴 مفقودات</option>
-            <option value="found" <?= $type==='found' ? 'selected':'' ?>>🟢 موجودات</option>
-        </select>
-        <select name="category">
-            <option value="">كل التصنيفات</option>
-            <?php foreach ($categories as $cat): ?>
-                <option value="<?= $cat['id'] ?>" <?= $category==$cat['id'] ? 'selected':'' ?>><?= $cat['name_ar'] ?></option>
-            <?php endforeach; ?>
-        </select>
-        <input type="text" name="city" value="<?= htmlspecialchars($city) ?>" placeholder="المدينة">
-        <button type="submit"><i class="fas fa-search"></i> بحث</button>
-    </form>
-
-    <div style="margin-bottom:16px; color:#777; font-size:14px;">
-        وجدنا <strong><?= count($items) ?></strong> نتيجة
-    </div>
-
-    <div class="cards-grid">
-        <?php foreach ($items as $item): ?>
-        <a href="item.php?id=<?= $item['id'] ?>" class="card">
-            <?php if ($item['image1']): ?>
-                <img src="uploads/<?= htmlspecialchars($item['image1']) ?>" alt="">
-            <?php else: ?>
-                <div class="card-no-img"><i class="fas <?= $item['icon'] ?>"></i></div>
-            <?php endif; ?>
-            <div class="card-body">
-                <span class="card-type <?= $item['type']==='lost' ? 'type-lost':'type-found' ?>">
-                    <?= $item['type']==='lost' ? '🔴 مفقود':'🟢 موجود' ?>
-                </span>
-                <div class="card-title"><?= htmlspecialchars($item['title']) ?></div>
-                <div class="card-meta">
-                    <i class="fas fa-map-marker-alt"></i> <?= htmlspecialchars($item['city']) ?>
-                    &nbsp;|&nbsp; <?= htmlspecialchars($item['name_ar']) ?>
-                </div>
-            </div>
-        </a>
-        <?php endforeach; ?>
-    </div>
-
-    <?php if (empty($items)): ?>
-        <div style="text-align:center; padding:60px; color:#aaa;">
-            <i class="fas fa-search" style="font-size:50px; margin-bottom:16px; display:block;"></i>
-            لا توجد نتائج — جربي كلمات بحث مختلفة
+ 
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>البحث - مفقودات جامعة الطائف</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+ 
+<div class="search-wrapper">
+ 
+    <form method="GET" action="search.php">
+ 
+        <h2>البحث عن المفقودات</h2>
+ 
+        <div class="form-group">
+            <label>بحث بالكلمة:</label>
+            <input type="text" name="keyword" value="<?php echo $keyword; ?>" placeholder="اكتب اسم الغرض...">
         </div>
-    <?php endif; ?>
+ 
+        <div class="form-group">
+            <label>التصنيف:</label>
+            <select name="category">
+                <option value="">-- جميع التصنيفات --</option>
+                <?php
+                $cat_result = mysqli_query($conn, "SELECT * FROM categories");
+                while ($cat = mysqli_fetch_array($cat_result)) {
+                    if ($category == $cat['id']) {
+                        echo "<option value='" . $cat['id'] . "' selected>" . $cat['name_ar'] . "</option>";
+                    } else {
+                        echo "<option value='" . $cat['id'] . "'>" . $cat['name_ar'] . "</option>";
+                    }
+                }
+                ?>
+            </select>
+        </div>
+ 
+        <div class="form-group">
+            <label>النوع:</label>
+            <select name="type">
+                <option value="">-- الكل --</option>
+                <?php
+                if ($type == 'lost') {
+                    echo "<option value='lost' selected>مفقود</option>";
+                    echo "<option value='found'>موجود</option>";
+                } else if ($type == 'found') {
+                    echo "<option value='lost'>مفقود</option>";
+                    echo "<option value='found' selected>موجود</option>";
+                } else {
+                    echo "<option value='lost'>مفقود</option>";
+                    echo "<option value='found'>موجود</option>";
+                }
+                ?>
+            </select>
+        </div>
+ 
+        <div class="form-group">
+            <label>المدينة:</label>
+            <select name="city">
+                <option value="">-- جميع المدن --</option>
+                <?php
+                $city_result = mysqli_query($conn, "SELECT DISTINCT city FROM items WHERE city != ''");
+                while ($c = mysqli_fetch_array($city_result)) {
+                    if ($city == $c['city']) {
+                        echo "<option value='" . $c['city'] . "' selected>" . $c['city'] . "</option>";
+                    } else {
+                        echo "<option value='" . $c['city'] . "'>" . $c['city'] . "</option>";
+                    }
+                }
+                ?>
+            </select>
+        </div>
+ 
+        <input type="submit" value="بحث" class="btn-search">
+        <a href="search.php" class="btn-clear">مسح الفلاتر</a>
+ 
+    </form>
+ 
+    <p class="results-count">عدد النتائج: <?php echo $num; ?></p>
+ 
+    <div class="results-grid">
+    <?php
+    if ($num == 0) {
+        echo "<p class='no-results'>لا توجد نتائج للبحث</p>";
+    } else {
+        while ($row = mysqli_fetch_array($result)) {
+            echo "<div class='item-card'>";
+ 
+            if ($row['image1'] != '') {
+                echo "<img src='uploads/" . $row['image1'] . "' alt='صورة'>";
+            } else {
+                echo "<div class='no-img'>لا توجد صورة</div>";
+            }
+ 
+            echo "<div class='item-card-body'>";
+            echo "<p class='item-cat'>" . $row['category_name'] . " | " . $row['city'] . "</p>";
+            echo "<h3>" . $row['title'] . "</h3>";
+            echo "<p>" . $row['description'] . "</p>";
+ 
+            if ($row['type'] == 'lost') {
+                echo "<span class='badge-lost'>مفقود</span>";
+            } else {
+                echo "<span class='badge-found'>موجود</span>";
+            }
+ 
+            echo "<br><a href='item.php?id=" . $row['id'] . "' class='btn-details'>عرض التفاصيل</a>";
+            echo "</div>";
+            echo "</div>";
+        }
+    }
+    ?>
+    </div>
+ 
 </div>
-
-<?php include 'includes/footer.php'; ?>
+ 
+<?php include 'footer.php'; ?>
+ 
+</body>
+</html>
