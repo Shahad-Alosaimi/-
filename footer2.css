@@ -1,0 +1,10 @@
+</div> <footer class="footer">
+    <div class="container">
+        <p><i class="fas fa-search-location"></i> منصة تطمن | مفقودات وموجودات الجامعة &copy; <?= date('Y') ?></p>
+        <p>إذا وجدت شيئاً، أعده لصاحبه 🤝</p>
+    </div>
+</footer>
+
+<script src="<?= SITE_URL ?>/assets/js/main.js"></script>
+</body>
+</html>
