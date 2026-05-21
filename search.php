@@ -1,6 +1,6 @@
 <?php
 include 'config.php';
-include 'header.php';
+include 'header2.php';
  
 $keyword  = '';
 $category = '';
