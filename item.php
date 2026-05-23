@@ -72,5 +72,52 @@ include 'includes/header.php';
 
     </div>
 </div>
+<!-- البلاغات المشابهة -->
 
+<hr style="margin:40px 0;">
+
+<h2>بلاغات مشابهة</h2>
+
+<div class="similar-items">
+
+<?php
+
+$category_id = $item['category_id'];
+
+$similar = $conn->query("
+SELECT *
+FROM items
+WHERE category_id = $category_id
+AND id != $id
+AND status != 'deleted'
+LIMIT 4
+");
+
+while($row = $similar->fetch_assoc()):
+
+?>
+
+<div class="similar-card">
+
+<?php if($row['image1']): ?>
+
+<img src="uploads/<?= htmlspecialchars($row['image1']) ?>" width="200">
+
+<?php endif; ?>
+
+<h3><?= htmlspecialchars($row['title']) ?></h3>
+
+<p>
+<?= mb_substr(htmlspecialchars($row['description']),0,70) ?>...
+</p>
+
+<a href="item.php?id=<?= $row['id'] ?>">
+عرض التفاصيل
+</a>
+
+</div>
+
+<?php endwhile; ?>
+
+</div>
 <?php include 'includes/footer.php'; ?>
